@@ -67,3 +67,11 @@ The output from these scripts is:
 	2029-01-01 MJD 62137 UT1-UTC +0.564089 +/- 0.096873 (0.000250)
 	2029-01-01 MJD 62137 UT1-UTC +0.560739 +/- 0.096693 (0.000250)
 	2029-01-01 MJD 62137 UT1-UTC +0.587419 +/- 0.096513 (0.000260)
+
+licence
+-------
+
+> This code was written by Tony Finch <<dot@dotat.at>>  
+> You may do anything with this. It has no warranty.  
+> <https://creativecommons.org/publicdomain/zero/1.0/>  
+> SPDX-License-Identifier: CC0-1.0
