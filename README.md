@@ -1,6 +1,9 @@
 When will the next leap second happen?
 ======================================
 
+> the results from this code are discussed in a twitter thread
+> https://twitter.com/fanf/status/1386838657093586944
+
 The IERS publishes a number of bulletins about UTC and leap seconds.
 
 https://www.iers.org/IERS/EN/Publications/Bulletins/bulletins.html
