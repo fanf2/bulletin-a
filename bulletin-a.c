@@ -29,37 +29,44 @@ ut2_ut1(uint mjd) {
 }
 
 static double
-ut1_utc_2021_04_22(uint mjd) {
-	return(-0.1462 + 0.00026 * (mjd - 59334.0) - ut2_ut1(mjd));
+ut1_utc(double dut1, double rate, uint mjd1, uint mjd3) {
+	return(dut1 + rate * (mjd3 - mjd1) - ut2_ut1(mjd3));
 }
 
 static double
-accuracy_2021_04_22(uint mjd) {
-	return(0.00025 * pow(mjd - 59326.0, 0.75));
+accuracy(uint mjd2, uint mjd3) {
+	return(0.00025 * pow((double)(mjd3 - mjd2), 0.75));
 }
 
 static void
-usage(void) {
-	fprintf(stderr, "usage: bulletin-a <YYYY-MM-DD>\n");
+usage(const char *err) {
+	fprintf(stderr, "error: %s\n", err);
+	fprintf(stderr, "usage: "
+		"bulletin-a <dut1> <rate> <mjd1> <mjd2> <YYYY-MM-DD>\n");
 	exit(1);
 }
 
 int main(int argc, char *argv[]) {
 
-	if(argc != 2)
-		usage();
+	if(argc != 5)
+		usage("incorrect number of arguments");
 
-	uint y, m, d;
-	int n;
-	int r = sscanf(argv[1], "%u-%u-%u%n", &y, &m, &d, &n);
-	if(r != 3 || argv[1][n] != '\0')
-		usage();
+	double dut1 = atof(argv[1]);
+	double rate = atof(argv[2]);
+	uint mjd1 = (uint)atoi(argv[3]);
+	uint mjd2 = (uint)atoi(argv[4]);
 
-	uint mjd = iso8601_mjd(y, m, d);
-	printf("%04u-%02u-%02u MJD %u UT1-UTC %+f +/- %f\n",
-	       y, m, d, mjd,
-	       ut1_utc_2021_04_22(mjd),
-	       accuracy_2021_04_22(mjd));
+	uint y = 2022, m = 1, d = 1;
 
-	exit(0);
+	for (;;) {
+		uint mjd3 = iso8601_mjd(y, m, d);
+		double u = ut1_utc(dut1, rate, mjd1, mjd3);
+		double a = accuracy(mjd2, mjd3);
+		if (u > 0.5) {
+			printf("%04u-%02u-%02u MJD %u UT1-UTC %+f +/- %f (%f)\n",
+			       y, m, d, mjd3, u, a, rate);
+			exit(0);
+		}
+		y += 1;
+	}
 }
