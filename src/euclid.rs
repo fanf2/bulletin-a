@@ -13,6 +13,12 @@ use std::ops::SubAssign;
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Euclid(i32);
 
+impl std::fmt::Debug for Euclid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
 impl From<i32> for Euclid {
     fn from(i: i32) -> Euclid {
         Euclid(i)
