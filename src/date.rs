@@ -1,25 +1,22 @@
 use crate::euclid::Euclid;
 
-#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct MJD(Euclid);
-
-impl From<i32> for MJD {
-    fn from(i: i32) -> MJD {
-        MJD(i.into())
-    }
-}
-
-impl From<MJD> for i32 {
-    fn from(d: MJD) -> i32 {
-        d.0.into()
-    }
-}
-
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Gregorian {
-    y: Euclid,
-    m: Euclid,
-    d: Euclid,
+    pub y: Euclid,
+    pub m: Euclid,
+    pub d: Euclid,
+}
+
+impl Gregorian {
+    pub fn year(self) -> i32 {
+        self.y.into()
+    }
+    pub fn month(self) -> i32 {
+        self.m.into()
+    }
+    pub fn day(self) -> i32 {
+        self.d.into()
+    }
 }
 
 pub fn gregorian(y: i32, m: i32, d: i32) -> Gregorian {
@@ -42,20 +39,20 @@ fn days_in_years(y: Euclid) -> Euclid {
     y * 1461 / 4 - y / 100 + y / 400
 }
 
-impl From<Gregorian> for MJD {
-    fn from(g: Gregorian) -> MJD {
+impl From<Gregorian> for i32 {
+    fn from(g: Gregorian) -> i32 {
         let (y, m, d) = if g.m > 2.into() {
             (g.y, g.m + 1, g.d)
         } else {
             (g.y - 1, g.m + 13, g.d)
         };
-        MJD(days_in_years(y) + m * 153 / 5 + d - 679004)
+        i32::from(days_in_years(y) + m * 153 / 5 + d - 679004)
     }
 }
 
-impl From<MJD> for Gregorian {
-    fn from(MJD(mut d): MJD) -> Gregorian {
-        d += 678881;
+impl From<i32> for Gregorian {
+    fn from(mjd: i32) -> Gregorian {
+        let mut d = Euclid::from(mjd + 678881);
         let mut y = d * 400 / 146097 + 1;
         if d < days_in_years(y) {
             y -= 1;
@@ -79,17 +76,17 @@ mod tests {
     #[test]
     fn test() {
         for (g, mjd) in &[
-            (gregorian(-1, 12, 31), MJD::from(-678942)),
-            (gregorian(0, 1, 1), MJD::from(-678941)),
-            (gregorian(0, 12, 31), MJD::from(-678576)),
-            (gregorian(1, 1, 1), MJD::from(-678575)),
-            (gregorian(1858, 11, 16), MJD::from(-1)),
-            (gregorian(1858, 11, 17), MJD::from(0)),
-            (gregorian(1970, 1, 1), MJD::from(40587)),
-            (gregorian(2020, 2, 2), MJD::from(58881)),
+            (gregorian(-1, 12, 31), -678942),
+            (gregorian(0, 1, 1), -678941),
+            (gregorian(0, 12, 31), -678576),
+            (gregorian(1, 1, 1), -678575),
+            (gregorian(1858, 11, 16), -1),
+            (gregorian(1858, 11, 17), 0),
+            (gregorian(1970, 1, 1), 40587),
+            (gregorian(2020, 2, 2), 58881),
         ] {
             assert_eq!(*g, Gregorian::from(*mjd));
-            assert_eq!(*mjd, MJD::from(*g));
+            assert_eq!(*mjd, i32::from(*g));
         }
     }
 }
