@@ -1,5 +1,20 @@
 use crate::euclid::Euclid;
 
+#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct MJD(Euclid);
+
+impl From<i32> for MJD {
+    fn from(i: i32) -> MJD {
+        MJD(i.into())
+    }
+}
+
+impl From<MJD> for i32 {
+    fn from(d: MJD) -> i32 {
+        d.0.into()
+    }
+}
+
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Gregorian {
     y: Euclid,
@@ -18,28 +33,13 @@ impl std::fmt::Debug for Gregorian {
             "Gregorian({:04}-{:02}-{:02})",
             i32::from(self.y),
             i32::from(self.m),
-            i32::from(self.d)
+            i32::from(self.d),
         )
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct MJD(Euclid);
-
 fn days_in_years(y: Euclid) -> Euclid {
     y * 1461 / 4 - y / 100 + y / 400
-}
-
-impl From<i32> for MJD {
-    fn from(i: i32) -> MJD {
-        MJD(i.into())
-    }
-}
-
-impl From<MJD> for i32 {
-    fn from(d: MJD) -> i32 {
-        d.0.into()
-    }
 }
 
 impl From<Gregorian> for MJD {
@@ -61,15 +61,13 @@ impl From<MJD> for Gregorian {
             y -= 1;
         }
         d -= days_in_years(y) - 31;
-        let mut m = d * 17 / 520;
+        let m = d * 17 / 520;
         d -= m * 520 / 17;
-        if m < 11.into() {
-            m += 2;
+        if m > 10.into() {
+            Gregorian { y: y + 1, m: m - 10, d }
         } else {
-            m -= 10;
-            y += 1;
+            Gregorian { y: y, m: m + 2, d: d }
         }
-        Gregorian { y, m, d }
     }
 }
 
