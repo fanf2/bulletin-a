@@ -1,0 +1,8 @@
+[package]
+name = "bulletin-a"
+version = "0.0.0"
+authors = ["Tony Finch <dot@dotat.at>"]
+edition = "2018"
+
+[dependencies]
+nom = "~6"
