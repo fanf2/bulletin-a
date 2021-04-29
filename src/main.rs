@@ -7,6 +7,53 @@ use date::*;
 use roman::Roman;
 use std::io::Read;
 
+fn ut2_ut1(mjd: i32) -> f64 {
+    // https://gssc.esa.int/navipedia/index.php/Transformations_between_Time_Systems
+    let besselian_year = 2000.0 + (mjd as f64 - 51544.03) / 365.2422;
+    let t = besselian_year * std::f64::consts::TAU;
+    let tt = 2.0 * t;
+    0.022 * t.sin() - 0.012 * t.cos() - 0.006 * tt.sin() + 0.007 * tt.cos()
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+struct Prediction {
+    dut1: f64,
+    lod: f64,
+    mjd: i32,
+}
+
+impl Prediction {
+    fn at(self, mjd: i32) -> f64 {
+        let days = (mjd - self.mjd) as f64;
+        self.dut1 - self.lod * days - ut2_ut1(mjd)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+struct Precision {
+    base: f64,
+    pow: f64,
+    mjd: i32,
+}
+
+impl Precision {
+    fn at(self, mjd: i32) -> f64 {
+        let days = (mjd - self.mjd) as f64;
+        self.base * days.powf(self.pow)
+    }
+}
+
+type BulletinA = (Gregorian, Prediction, Precision);
+
+// recent leap seconds
+//
+// 2005-12-31 23:59:60
+// 2008-12-31 23:59:60
+// 2012-06-30 23:59:60
+// 2015-06-30 23:59:60
+// 2016-12-31 23:59:60
+
+// silly thing so that fetching a URL looks like reading a file
 struct URL(String);
 
 impl URL {
@@ -25,7 +72,7 @@ impl URL {
     }
 }
 
-fn get_bulletin_a(issue: i32) -> Result<(Gregorian, i32, String)> {
+fn get_bulletin_a(issue: i32) -> Result<(Gregorian, String)> {
     // no bulletin issued on 2009-01-01 which would have been 208
     // first available issue
     let zero =
@@ -54,30 +101,14 @@ fn get_bulletin_a(issue: i32) -> Result<(Gregorian, i32, String)> {
             .with_context(|| format!("failed to get {}", url.0))?;
         std::fs::write(&file, &data)?;
     }
-    // to work more easily with nom
-    Ok((date, week, String::from_utf8(data)?))
+    // strings work more easily with nom
+    Ok((date, String::from_utf8(data)?))
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-struct Prediction {
-    dut1: f64,
-    lod: f64,
-    mjd: i32,
-}
+type ParseResult<'a> =
+    nom::IResult<&'a str, BulletinA, nom::error::VerboseError<&'a str>>;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-struct Precision {
-    base: f64,
-    pow: f64,
-    mjd: i32,
-}
-
-type BulletinA = (Prediction, Precision);
-
-type VerboseResult<'a, O> =
-    nom::IResult<&'a str, O, nom::error::VerboseError<&'a str>>;
-
-fn parse_bulletin_a<'a>(bula: &'a str) -> VerboseResult<'a, BulletinA> {
+fn parse_bulletin_a<'a>(date: Gregorian, bula: &'a str) -> ParseResult<'a> {
     use nom::branch::*;
     use nom::bytes::complete::*;
     use nom::character::complete::*;
@@ -146,7 +177,7 @@ fn parse_bulletin_a<'a>(bula: &'a str) -> VerboseResult<'a, BulletinA> {
         complete(fold_many0(line, Skip, |acc, item| match (acc, item) {
             (acc, Skip) => acc,
             (Skip, Pred(pred)) => Pred(pred),
-            (Pred(pred), Prec(prec)) => BulA((pred, prec)),
+            (Pred(pred), Prec(prec)) => BulA((date, pred, prec)),
             _ => Clash("multiple equations"),
         })),
         |t| match t {
@@ -159,18 +190,36 @@ fn parse_bulletin_a<'a>(bula: &'a str) -> VerboseResult<'a, BulletinA> {
     parse(bula)
 }
 
+fn bulletin_a(issue: i32) -> Result<BulletinA> {
+    let (date, bula) = get_bulletin_a(issue)?;
+    let (_, param) =
+        parse_bulletin_a(date, &bula).map_err(|e| anyhow!("{}", e))?;
+    Ok(param)
+}
+
 fn main() -> Result<()> {
+    let (date, pred, prec) = bulletin_a(849)?;
+    eprintln!("predictions as of {}", date);
+    for year in 2022..=2030 {
+        let greg = gregorian(year, 1, 1);
+        let mjd = i32::from(greg);
+        eprintln!(
+            "{} MJD {} UT1-UTC {:+.6} ± {:.6} s",
+            greg,
+            mjd,
+            pred.at(mjd),
+            prec.at(mjd)
+        );
+    }
+    return Ok(());
     // issue 4 is missing so skip a few
     for issue in 5..851 {
-        let (date, week, bula) = get_bulletin_a(issue)?;
-        let (_, param) =
-            parse_bulletin_a(&bula).map_err(|e| anyhow!("{}", e))?;
+        let param = bulletin_a(issue)?;
         eprintln!(
-            "{}  {:03}    DUT1 = {:+.3} s    lod = {:+.0} µs",
-            date,
-            week,
-            param.0.dut1,
-            param.0.lod * 1000000.0
+            "{}    DUT1 = {:+.3} s    lod = {:+.0} µs",
+            param.0,
+            param.1.dut1,
+            param.1.lod * 1000000.0
         );
     }
     Ok(())
