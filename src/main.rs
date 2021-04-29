@@ -79,13 +79,18 @@ fn parse_bulletin_a<'a>(bula: &'a str) -> VerboseResult<'a, BulletinA> {
     use nom::multi::*;
     use nom::sequence::*;
 
-    let skip = value(NO_BUL_A, pair(not_line_ending, line_ending));
+    // zero-sized output value
+    let skip = value((), pair(not_line_ending, line_ending));
+    // assume there's no need to alloc a vec of zero-sized outputs
+    let skip_till = |p| map(many_till(skip, p), |pair| pair.1);
+
     let eqn = value(
         BulletinA { dut1: Some(0.0), ..NO_BUL_A },
         tuple((space1, tag("UT1-UTC = "), not_line_ending, line_ending)),
     );
-    let mut line = alt((eqn, skip));
-    line(bula)
+
+    let mut parse = skip_till(eqn);
+    parse(bula)
 }
 
 fn main() -> Result<()> {
