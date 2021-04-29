@@ -44,10 +44,85 @@ impl Precision {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
+#[allow(non_camel_case_types)]
+struct UT1_UTC {
+    val: f64,
+    err: f64,
+    lod: f64,
+}
+
+impl std::fmt::Display for UT1_UTC {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "UT1-UTC {:+.3} ± {:.3} s (lod {:+.0} µs)",
+            self.val,
+            self.err,
+            self.lod * 1000000.0,
+        )
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
 struct BulletinA {
     date: Gregorian,
     pred: Prediction,
     prec: Precision,
+}
+
+impl BulletinA {
+    fn dut1_at(self, date: Gregorian) -> UT1_UTC {
+        let mjd = i32::from(date);
+        let val = self.pred.at(mjd);
+        let err = self.prec.at(mjd);
+        let lod = self.pred.lod;
+        UT1_UTC { val, err, lod }
+    }
+    fn leap_at(self, thresh: f64, date: Gregorian) -> Leap {
+        if self.date > date {
+            return Leap::Zero;
+        }
+        let dut1 = self.dut1_at(date);
+        let lo = dut1.val - dut1.err;
+        let hi = dut1.val + dut1.err;
+        if dut1.lod < 0.0 && 0.0 < lo && thresh < hi {
+            return Leap::Neg(date, dut1);
+        }
+        if dut1.lod > 0.0 && lo < -thresh && hi < 0.0 {
+            return Leap::Pos(date, dut1);
+        }
+        Leap::Zero
+    }
+    fn leap(self, thresh: f64) -> Leap {
+        for year in 2000..3000 {
+            match self.leap_at(thresh, gregorian(year, 6, 30)) {
+                Leap::Zero => (),
+                leap => return leap,
+            };
+            match self.leap_at(thresh, gregorian(year, 12, 31)) {
+                Leap::Zero => (),
+                leap => return leap,
+            };
+        }
+        Leap::Zero
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum Leap {
+    Neg(Gregorian, UT1_UTC),
+    Pos(Gregorian, UT1_UTC),
+    Zero,
+}
+
+impl std::fmt::Display for Leap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Leap::Zero => write!(f, "????-??-?? (?)"),
+            Leap::Neg(date, dut1) => write!(f, "{} (-) {}", date, dut1),
+            Leap::Pos(date, dut1) => write!(f, "{} (+) {}", date, dut1),
+        }
+    }
 }
 
 // recent leap seconds
@@ -203,29 +278,11 @@ fn bulletin_a(issue: i32) -> Result<BulletinA> {
 }
 
 fn main() -> Result<()> {
-    let param = bulletin_a(849)?;
-    eprintln!("predictions as of {}", param.date);
-    for year in 2022..=2030 {
-        let greg = gregorian(year, 1, 1);
-        let mjd = i32::from(greg);
-        eprintln!(
-            "{} MJD {} UT1-UTC {:+.6} ± {:.6} s",
-            greg,
-            mjd,
-            param.pred.at(mjd),
-            param.prec.at(mjd)
-        );
-    }
-    return Ok(());
     // issue 4 is missing so skip a few
-    for issue in 5..851 {
+    for issue in 800..851 {
         let param = bulletin_a(issue)?;
-        eprintln!(
-            "{}    DUT1 = {:+.3} s    lod = {:+.0} µs",
-            param.date,
-            param.pred.dut1,
-            param.pred.lod * 1000000.0
-        );
+        let leap = param.leap(0.75);
+        eprintln!("{} -> {}", param.date, leap);
     }
     Ok(())
 }
