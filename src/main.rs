@@ -125,14 +125,6 @@ impl std::fmt::Display for Leap {
     }
 }
 
-// recent leap seconds
-//
-// 2005-12-31 23:59:60
-// 2008-12-31 23:59:60
-// 2012-06-30 23:59:60
-// 2015-06-30 23:59:60
-// 2016-12-31 23:59:60
-
 // silly thing so that fetching a URL looks like reading a file
 struct URL(String);
 
@@ -277,11 +269,19 @@ fn bulletin_a(issue: i32) -> Result<BulletinA> {
     Ok(param)
 }
 
+// recent leap seconds
+//
+// 2005-12-31 23:59:60
+// 2008-12-31 23:59:60
+// 2012-06-30 23:59:60
+// 2015-06-30 23:59:60
+// 2016-12-31 23:59:60
+
 fn main() -> Result<()> {
     // issue 4 is missing so skip a few
-    for issue in 800..851 {
-        let param = bulletin_a(issue)?;
-        let leap = param.leap(0.75);
+    for issue in 1..=85 {
+        let param = bulletin_a(issue * 10)?;
+        let leap = param.leap(0.60);
         eprintln!("{} -> {}", param.date, leap);
     }
     Ok(())
