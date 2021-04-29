@@ -43,7 +43,12 @@ impl Precision {
     }
 }
 
-type BulletinA = (Gregorian, Prediction, Precision);
+#[derive(Copy, Clone, Debug, PartialEq)]
+struct BulletinA {
+    date: Gregorian,
+    pred: Prediction,
+    prec: Precision,
+}
 
 // recent leap seconds
 //
@@ -122,7 +127,7 @@ fn parse_bulletin_a<'a>(date: Gregorian, bula: &'a str) -> ParseResult<'a> {
         Skip,
         Pred(Prediction),
         Prec(Precision),
-        BulA(BulletinA),
+        BulA(Gregorian, Prediction, Precision),
         Clash(&'static str),
     }
     use State::*;
@@ -177,11 +182,11 @@ fn parse_bulletin_a<'a>(date: Gregorian, bula: &'a str) -> ParseResult<'a> {
         complete(fold_many0(line, Skip, |acc, item| match (acc, item) {
             (acc, Skip) => acc,
             (Skip, Pred(pred)) => Pred(pred),
-            (Pred(pred), Prec(prec)) => BulA((date, pred, prec)),
+            (Pred(pred), Prec(prec)) => BulA(date, pred, prec),
             _ => Clash("multiple equations"),
         })),
         |t| match t {
-            BulA(param) => Ok(param),
+            BulA(date, pred, prec) => Ok(BulletinA { date, pred, prec }),
             Clash(err) => Err(err),
             _ => Err("missing equation"),
         },
@@ -198,8 +203,8 @@ fn bulletin_a(issue: i32) -> Result<BulletinA> {
 }
 
 fn main() -> Result<()> {
-    let (date, pred, prec) = bulletin_a(849)?;
-    eprintln!("predictions as of {}", date);
+    let param = bulletin_a(849)?;
+    eprintln!("predictions as of {}", param.date);
     for year in 2022..=2030 {
         let greg = gregorian(year, 1, 1);
         let mjd = i32::from(greg);
@@ -207,8 +212,8 @@ fn main() -> Result<()> {
             "{} MJD {} UT1-UTC {:+.6} ± {:.6} s",
             greg,
             mjd,
-            pred.at(mjd),
-            prec.at(mjd)
+            param.pred.at(mjd),
+            param.prec.at(mjd)
         );
     }
     return Ok(());
@@ -217,9 +222,9 @@ fn main() -> Result<()> {
         let param = bulletin_a(issue)?;
         eprintln!(
             "{}    DUT1 = {:+.3} s    lod = {:+.0} µs",
-            param.0,
-            param.1.dut1,
-            param.1.lod * 1000000.0
+            param.date,
+            param.pred.dut1,
+            param.pred.lod * 1000000.0
         );
     }
     Ok(())
