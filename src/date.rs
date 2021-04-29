@@ -23,15 +23,21 @@ pub fn gregorian(y: i32, m: i32, d: i32) -> Gregorian {
     Gregorian { y: y.into(), m: m.into(), d: d.into() }
 }
 
-impl std::fmt::Debug for Gregorian {
+impl std::fmt::Display for Gregorian {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Gregorian({:04}-{:02}-{:02})",
+            "{:04}-{:02}-{:02}",
             i32::from(self.y),
             i32::from(self.m),
             i32::from(self.d),
         )
+    }
+}
+
+impl std::fmt::Debug for Gregorian {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Gregorian({})", self)
     }
 }
 

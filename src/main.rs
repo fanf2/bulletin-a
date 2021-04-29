@@ -25,7 +25,7 @@ impl URL {
     }
 }
 
-fn get_bulletin_a(issue: i32) -> Result<String> {
+fn get_bulletin_a(issue: i32) -> Result<(Gregorian, String)> {
     // first available issue
     let zero = i32::from(gregorian(2005, 1, 6));
     // published weekly
@@ -54,7 +54,7 @@ fn get_bulletin_a(issue: i32) -> Result<String> {
         std::fs::write(&file, &data)?;
     }
     // to work more easily with nom
-    Ok(String::from_utf8(data)?)
+    Ok((date, String::from_utf8(data)?))
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -85,6 +85,16 @@ fn parse_bulletin_a<'a>(bula: &'a str) -> VerboseResult<'a, BulletinA> {
     use nom::number::complete::*;
     use nom::sequence::*;
 
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    enum State {
+        Skip,
+        Pred(Prediction),
+        Prec(Precision),
+        BulA(BulletinA),
+        Clash(&'static str),
+    }
+    use State::*;
+
     let tail = || tuple((space0, line_ending));
 
     // UT1-UTC = -0.NNNNN +- 0.000NNN (MJD - NNNNN) - (UT2-UT1)
@@ -100,18 +110,14 @@ fn parse_bulletin_a<'a>(bula: &'a str) -> VerboseResult<'a, BulletinA> {
             ),
         )),
         |t| {
-            (
-                Some(Prediction {
-                    dut1: t.0 as f64,
-                    lod: match t.1 {
-                        '+' => t.2,
-                        _ => -t.2,
-                    } as f64,
-                    mjd: t.3 as i32,
-                }),
-                None,
-                None,
-            )
+            Pred(Prediction {
+                dut1: t.0 as f64,
+                lod: match t.1 {
+                    '+' => t.2,
+                    _ => -t.2,
+                } as f64,
+                mjd: t.3 as i32,
+            })
         },
     );
 
@@ -127,37 +133,30 @@ fn parse_bulletin_a<'a>(bula: &'a str) -> VerboseResult<'a, BulletinA> {
                 preceded(tag(")**"), float),
             )),
             |t| {
-                (
-                    None,
-                    Some(Precision {
-                        base: t.0 as f64,
-                        mjd: t.1 as i32,
-                        pow: t.2 as f64,
-                    }),
-                    None,
-                )
+                Prec(Precision {
+                    base: t.0 as f64,
+                    mjd: t.1 as i32,
+                    pow: t.2 as f64,
+                })
             },
         )
     };
-
     let prec = delimited(precision("x,y"), precision("t"), tail());
 
-    let none = (None, None, None);
-
-    let skip = value(none, pair(not_line_ending, line_ending));
+    let skip = value(Skip, pair(not_line_ending, line_ending));
 
     let line = alt((pred, prec, skip));
 
     let mut parse = map_res(
-        complete(fold_many0(line, none, |acc, item| match (acc, item) {
-            (acc, (None, None, None)) => acc,
-            ((None, None, None), (pred, None, None)) => (pred, None, None),
-            ((pred, None, None), (None, prec, None)) => (pred, prec, None),
-            _ => (None, None, Some("multiple equations")),
+        complete(fold_many0(line, Skip, |acc, item| match (acc, item) {
+            (acc, Skip) => acc,
+            (Skip, Pred(pred)) => Pred(pred),
+            (Pred(pred), Prec(prec)) => BulA((pred, prec)),
+            _ => Clash("multiple equations"),
         })),
         |t| match t {
-            (Some(pred), Some(prec), None) => Ok((pred, prec)),
-            (None, None, Some(err)) => Err(err),
+            BulA(param) => Ok(param),
+            Clash(err) => Err(err),
             _ => Err("missing equation"),
         },
     );
@@ -166,10 +165,8 @@ fn parse_bulletin_a<'a>(bula: &'a str) -> VerboseResult<'a, BulletinA> {
 }
 
 fn main() -> Result<()> {
-    let bula = get_bulletin_a(850)?;
-    let (rest, value) =
-        parse_bulletin_a(&bula).map_err(|e| anyhow!("{}", e))?;
-    eprintln!("value: {:?}", value);
-    eprint!("rest:\n>{}<", rest);
+    let (date, bula) = get_bulletin_a(850)?;
+    let (_, param) = parse_bulletin_a(&bula).map_err(|e| anyhow!("{}", e))?;
+    eprintln!("{} {:?}", date, param);
     Ok(())
 }
