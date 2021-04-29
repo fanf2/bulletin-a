@@ -58,38 +58,110 @@ fn get_bulletin_a(issue: i32) -> Result<String> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-struct BulletinA {
-    dut1: Option<f64>,
-    lod: Option<f64>,
-    mjd_pred: Option<i32>,
-    mjd_err: Option<i32>,
+struct Prediction {
+    dut1: f64,
+    lod: f64,
+    mjd: i32,
 }
 
-const NO_BUL_A: BulletinA =
-    BulletinA { dut1: None, lod: None, mjd_pred: None, mjd_err: None };
+#[derive(Copy, Clone, Debug, PartialEq)]
+struct Precision {
+    base: f64,
+    pow: f64,
+    mjd: i32,
+}
+
+type BulletinA = (Prediction, Precision);
 
 type VerboseResult<'a, O> =
     nom::IResult<&'a str, O, nom::error::VerboseError<&'a str>>;
 
 fn parse_bulletin_a<'a>(bula: &'a str) -> VerboseResult<'a, BulletinA> {
-    use nom::branch::alt;
+    use nom::branch::*;
     use nom::bytes::complete::*;
     use nom::character::complete::*;
     use nom::combinator::*;
     use nom::multi::*;
+    use nom::number::complete::*;
     use nom::sequence::*;
 
-    // zero-sized output value
-    let skip = value((), pair(not_line_ending, line_ending));
-    // assume there's no need to alloc a vec of zero-sized outputs
-    let skip_till = |p| map(many_till(skip, p), |pair| pair.1);
+    let tail = || tuple((space0, line_ending));
 
-    let eqn = value(
-        BulletinA { dut1: Some(0.0), ..NO_BUL_A },
-        tuple((space1, tag("UT1-UTC = "), not_line_ending, line_ending)),
+    // UT1-UTC = -0.NNNNN +- 0.000NNN (MJD - NNNNN) - (UT2-UT1)
+    let pred = map(
+        tuple((
+            preceded(tuple((space0, tag("UT1-UTC = "))), float),
+            preceded(space0, one_of("+-")),
+            preceded(space0, float),
+            delimited(
+                tuple((space0, tag("(MJD - "))),
+                float,
+                tuple((space0, tag(") - (UT2-UT1)"), tail())),
+            ),
+        )),
+        |t| {
+            (
+                Some(Prediction {
+                    dut1: t.0 as f64,
+                    lod: match t.1 {
+                        '+' => t.2,
+                        _ => -t.2,
+                    } as f64,
+                    mjd: t.3 as i32,
+                }),
+                None,
+                None,
+            )
+        },
     );
 
-    let mut parse = skip_till(eqn);
+    // S x,y = 0.00068 (MJD-59326)**0.80   S t = 0.00025 (MJD-59326)**0.75
+    let precision = |var| {
+        map(
+            tuple((
+                preceded(
+                    tuple((space0, tag("S "), tag(var), tag(" = "))),
+                    float,
+                ),
+                preceded(tag(" (MJD-"), float),
+                preceded(tag(")**"), float),
+            )),
+            |t| {
+                (
+                    None,
+                    Some(Precision {
+                        base: t.0 as f64,
+                        mjd: t.1 as i32,
+                        pow: t.2 as f64,
+                    }),
+                    None,
+                )
+            },
+        )
+    };
+
+    let prec = delimited(precision("x,y"), precision("t"), tail());
+
+    let none = (None, None, None);
+
+    let skip = value(none, pair(not_line_ending, line_ending));
+
+    let line = alt((pred, prec, skip));
+
+    let mut parse = map_res(
+        complete(fold_many0(line, none, |acc, item| match (acc, item) {
+            (acc, (None, None, None)) => acc,
+            ((None, None, None), (pred, None, None)) => (pred, None, None),
+            ((pred, None, None), (None, prec, None)) => (pred, prec, None),
+            _ => (None, None, Some("multiple equations")),
+        })),
+        |t| match t {
+            (Some(pred), Some(prec), None) => Ok((pred, prec)),
+            (None, None, Some(err)) => Err(err),
+            _ => Err("missing equation"),
+        },
+    );
+
     parse(bula)
 }
 
