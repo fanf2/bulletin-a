@@ -7,18 +7,24 @@ use roman::Roman;
 use std::io::Read;
 use std::str::FromStr;
 
-fn main() -> Result<()> {
-    let args: Vec<String> = std::env::args().collect();
-    let count = if args.len() <= 1 { 1 } else { i32::from_str(&args[1])? };
-    let thresh = if args.len() <= 2 { 0.60 } else { f64::from_str(&args[2])? };
-    if args.len() > 3 {
-        eprint!(
+fn usage() {
+    eprint!(
             "usage: bulletin-a [N]\n\
              display leap second forecast from the last N issues of Bulletin A\n\
              default is to print the latest forecast\n"
         );
-        std::process::exit(1);
-    };
+    std::process::exit(1);
+}
+
+fn main() -> Result<()> {
+    let args: Vec<String> = std::env::args().collect();
+    if (args.len() > 1 && (args[1] == "-h" || args[1] == "--help"))
+        || args.len() > 3
+    {
+        usage();
+    }
+    let thresh = if args.len() > 2 { f64::from_str(&args[2])? } else { 0.60 };
+    let count = if args.len() > 1 { i32::from_str(&args[1])? } else { 1 };
     let latest = latest_bulletin_a()?;
     let first = latest - count + 1;
     for issue in first..=latest {
@@ -40,14 +46,14 @@ struct Prediction {
 
 impl Prediction {
     fn at(self, mjd: i32) -> f64 {
-        let days = (mjd - self.mjd) as f64;
         let besselian_year = 2000.0 + (mjd as f64 - 51544.03) / 365.2422;
         let t = besselian_year * std::f64::consts::TAU;
         let tt = 2.0 * t;
         let s = 0.022 * t.sin() - 0.012 * t.cos();
         let ss = 0.006 * tt.sin() - 0.007 * tt.cos();
         let ut2_ut1 = s - ss;
-        self.dut1 - self.lod * days - ut2_ut1
+        let days = (mjd - self.mjd) as f64;
+        self.dut1 - days * self.lod - ut2_ut1
     }
 }
 
@@ -225,7 +231,7 @@ fn parse_bulletin_a<'a>(date: Gregorian, bula: &'a str) -> ParseResult<'a> {
         Skip,
         Pred(Prediction),
         Prec(Precision),
-        BulA(Gregorian, Prediction, Precision),
+        BulA(Prediction, Precision),
         Clash(&'static str),
     }
     use State::*;
@@ -280,11 +286,11 @@ fn parse_bulletin_a<'a>(date: Gregorian, bula: &'a str) -> ParseResult<'a> {
         complete(fold_many0(line, Skip, |acc, item| match (acc, item) {
             (acc, Skip) => acc,
             (Skip, Pred(pred)) => Pred(pred),
-            (Pred(pred), Prec(prec)) => BulA(date, pred, prec),
+            (Pred(pred), Prec(prec)) => BulA(pred, prec),
             _ => Clash("multiple equations"),
         })),
         |t| match t {
-            BulA(date, pred, prec) => Ok(BulletinA { date, pred, prec }),
+            BulA(pred, prec) => Ok(BulletinA { date, pred, prec }),
             Clash(err) => Err(err),
             _ => Err("missing equation"),
         },
