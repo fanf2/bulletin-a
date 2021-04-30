@@ -49,7 +49,7 @@ impl From<i32> for Gregorian {
         d -= days_in_years(y) - 31;
         let m = muldiv(d, 17, 520);
         d -= muldiv(m, 520, 17);
-        if m > 10.into() {
+        if m > 10 {
             Gregorian(y + 1, m - 10, d)
         } else {
             Gregorian(y + 0, m + 2, d)
@@ -63,7 +63,7 @@ mod tests {
 
     #[test]
     fn test() {
-        for &(g, mjd) in &[
+        for &(date, mjd) in &[
             (Gregorian(-1, 12, 31), -678942),
             (Gregorian(0, 1, 1), -678941),
             (Gregorian(0, 12, 31), -678576),
@@ -74,8 +74,8 @@ mod tests {
             (Gregorian(2001, 1, 1), 5 * 146097 - 678575),
             (Gregorian(2020, 2, 2), 58881),
         ] {
-            assert_eq!(g, Gregorian::from(mjd));
-            assert_eq!(mjd, i32::from(g));
+            assert_eq!(date, Gregorian::from(mjd));
+            assert_eq!(mjd, i32::from(date));
         }
         assert_eq!(146097, days_in_years(400));
     }
