@@ -67,12 +67,11 @@ impl From<i32> for Gregorian {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
     #[test]
     fn test() {
-        for (g, mjd) in &[
+        for &(g, mjd) in &[
             (gregorian(-1, 12, 31), -678942),
             (gregorian(0, 1, 1), -678941),
             (gregorian(0, 12, 31), -678576),
@@ -80,10 +79,11 @@ mod tests {
             (gregorian(1858, 11, 16), -1),
             (gregorian(1858, 11, 17), 0),
             (gregorian(1970, 1, 1), 40587),
+            (gregorian(2001, 1, 1), 5 * 146097 - 678575),
             (gregorian(2020, 2, 2), 58881),
         ] {
-            assert_eq!(*g, Gregorian::from(*mjd));
-            assert_eq!(*mjd, i32::from(*g));
+            assert_eq!(g, Gregorian::from(mjd));
+            assert_eq!(mjd, i32::from(g));
         }
     }
 }
