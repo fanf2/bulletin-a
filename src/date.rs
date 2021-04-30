@@ -1,26 +1,12 @@
-use crate::euclid::Euclid;
-
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Gregorian {
-    pub y: Euclid,
-    pub m: Euclid,
-    pub d: Euclid,
-}
-
-impl Gregorian {
-    pub fn year(self) -> i32 {
-        self.y.into()
-    }
-    pub fn month(self) -> i32 {
-        self.m.into()
-    }
-    pub fn day(self) -> i32 {
-        self.d.into()
-    }
+    pub y: i32,
+    pub m: i32,
+    pub d: i32,
 }
 
 pub fn gregorian(y: i32, m: i32, d: i32) -> Gregorian {
-    Gregorian { y: y.into(), m: m.into(), d: d.into() }
+    Gregorian { y, m, d }
 }
 
 impl std::fmt::Display for Gregorian {
@@ -41,31 +27,36 @@ impl std::fmt::Debug for Gregorian {
     }
 }
 
-fn days_in_years(y: Euclid) -> Euclid {
-    y * 1461 / 4 - y / 100 + y / 400
+fn muldiv(var: i32, mul: i32, div: i32) -> i32 {
+    use std::ops::Mul;
+    var.mul(mul).div_euclid(div)
+}
+
+fn days_in_years(y: i32) -> i32 {
+    muldiv(y, 1461, 4) - muldiv(y, 1, 100) + muldiv(y, 1, 400)
 }
 
 impl From<Gregorian> for i32 {
     fn from(g: Gregorian) -> i32 {
-        let (y, m, d) = if g.m > 2.into() {
+        let (y, m, d) = if g.m > 2 {
             (g.y, g.m + 1, g.d)
         } else {
             (g.y - 1, g.m + 13, g.d)
         };
-        i32::from(days_in_years(y) + m * 153 / 5 + d - 679004)
+        days_in_years(y) + muldiv(m, 153, 5) + d - 679004
     }
 }
 
 impl From<i32> for Gregorian {
     fn from(mjd: i32) -> Gregorian {
-        let mut d = Euclid::from(mjd + 678881);
-        let mut y = d * 400 / 146097 + 1;
+        let mut d = mjd + 678881;
+        let mut y = muldiv(d, 400, 146097) + 1;
         if d < days_in_years(y) {
             y -= 1;
         }
         d -= days_in_years(y) - 31;
-        let m = d * 17 / 520;
-        d -= m * 520 / 17;
+        let m = muldiv(d, 17, 520);
+        d -= muldiv(m, 520, 17);
         if m > 10.into() {
             Gregorian { y: y + 1, m: m - 10, d }
         } else {

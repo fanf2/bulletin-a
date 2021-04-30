@@ -1,5 +1,4 @@
 mod date;
-mod euclid;
 mod roman;
 
 use anyhow::{anyhow, Context, Result};
@@ -183,7 +182,7 @@ fn get_bulletin_a(issue: i32) -> Result<(Gregorian, String)> {
         i32::from(gregorian(2005, 1, 6)) + if issue >= 208 { 7 } else { 0 };
     // published weekly
     let date = Gregorian::from(zero + issue * 7);
-    let year = date.year();
+    let year = date.y;
     let volume = Roman(year - 1987);
     // volume number is week within year
     let janus = i32::from(gregorian(year, 1, 1));
