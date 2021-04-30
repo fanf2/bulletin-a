@@ -10,11 +10,9 @@ use std::str::FromStr;
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    let count = if args.len() == 1 {
-        1
-    } else if args.len() == 2 {
-        i32::from_str(&args[1])?
-    } else {
+    let count = if args.len() <= 1 { 1 } else { i32::from_str(&args[1])? };
+    let thresh = if args.len() <= 2 { 0.60 } else { f64::from_str(&args[2])? };
+    if args.len() > 3 {
         eprint!(
             "usage: bulletin-a [N]\n\
              display leap second forecast from the last N issues of Bulletin A\n\
@@ -26,7 +24,7 @@ fn main() -> Result<()> {
     let first = latest - count + 1;
     for issue in first..=latest {
         let param = bulletin_a(issue)?;
-        let leap = param.leap(0.60);
+        let leap = param.leap(thresh);
         eprintln!("{} -> {}", param.date, leap);
     }
     Ok(())
