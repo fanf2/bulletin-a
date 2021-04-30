@@ -6,13 +6,30 @@ use anyhow::{anyhow, Context, Result};
 use date::*;
 use roman::Roman;
 use std::io::Read;
+use std::str::FromStr;
 
-fn ut2_ut1(mjd: i32) -> f64 {
-    // https://gssc.esa.int/navipedia/index.php/Transformations_between_Time_Systems
-    let besselian_year = 2000.0 + (mjd as f64 - 51544.03) / 365.2422;
-    let t = besselian_year * std::f64::consts::TAU;
-    let tt = 2.0 * t;
-    0.022 * t.sin() - 0.012 * t.cos() - 0.006 * tt.sin() + 0.007 * tt.cos()
+fn main() -> Result<()> {
+    let args: Vec<String> = std::env::args().collect();
+    let count = if args.len() == 1 {
+        1
+    } else if args.len() == 2 {
+        i32::from_str(&args[1])?
+    } else {
+        eprint!(
+            "usage: bulletin-a [N]\n\
+             display leap second forecast from the last N issues of Bulletin A\n\
+             default is to print the latest forecast\n"
+        );
+        std::process::exit(1);
+    };
+    let latest = latest_bulletin_a()?;
+    let first = latest - count + 1;
+    for issue in first..=latest {
+        let param = bulletin_a(issue)?;
+        let leap = param.leap(0.60);
+        eprintln!("{} -> {}", param.date, leap);
+    }
+    Ok(())
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -22,10 +39,18 @@ struct Prediction {
     mjd: i32,
 }
 
+// https://gssc.esa.int/navipedia/index.php/Transformations_between_Time_Systems
+
 impl Prediction {
     fn at(self, mjd: i32) -> f64 {
         let days = (mjd - self.mjd) as f64;
-        self.dut1 - self.lod * days - ut2_ut1(mjd)
+        let besselian_year = 2000.0 + (mjd as f64 - 51544.03) / 365.2422;
+        let t = besselian_year * std::f64::consts::TAU;
+        let tt = 2.0 * t;
+        let s = 0.022 * t.sin() - 0.012 * t.cos();
+        let ss = 0.006 * tt.sin() - 0.007 * tt.cos();
+        let ut2_ut1 = s - ss;
+        self.dut1 - self.lod * days - ut2_ut1
     }
 }
 
@@ -40,26 +65,6 @@ impl Precision {
     fn at(self, mjd: i32) -> f64 {
         let days = (mjd - self.mjd) as f64;
         self.base * days.powf(self.pow)
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-#[allow(non_camel_case_types)]
-struct UT1_UTC {
-    val: f64,
-    err: f64,
-    lod: f64,
-}
-
-impl std::fmt::Display for UT1_UTC {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "UT1-UTC {:+.3} ± {:.3} s (lod {:+.0} µs)",
-            self.val,
-            self.err,
-            self.lod * 1000000.0,
-        )
     }
 }
 
@@ -109,6 +114,26 @@ impl BulletinA {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
+#[allow(non_camel_case_types)]
+struct UT1_UTC {
+    val: f64,
+    err: f64,
+    lod: f64,
+}
+
+impl std::fmt::Display for UT1_UTC {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "UT1-UTC {:+.3} ± {:.3} s (lod {:+.0} µs)",
+            self.val,
+            self.err,
+            self.lod * 1000000.0,
+        )
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum Leap {
     Neg(Gregorian, UT1_UTC),
     Pos(Gregorian, UT1_UTC),
@@ -142,6 +167,15 @@ impl URL {
         xfer.perform()?;
         Ok(())
     }
+}
+
+fn latest_bulletin_a() -> Result<i32> {
+    use std::time::SystemTime;
+    let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
+    let unix_date = now.as_secs() / (24 * 60 * 60);
+    let mjd = i32::from(gregorian(1970, 1, 1)) + unix_date as i32;
+    let zero = i32::from(gregorian(2005, 1, 13));
+    Ok((mjd - zero) / 7)
 }
 
 fn get_bulletin_a(issue: i32) -> Result<(Gregorian, String)> {
@@ -267,22 +301,4 @@ fn bulletin_a(issue: i32) -> Result<BulletinA> {
     let (_, param) =
         parse_bulletin_a(date, &bula).map_err(|e| anyhow!("{}", e))?;
     Ok(param)
-}
-
-// recent leap seconds
-//
-// 2005-12-31 23:59:60
-// 2008-12-31 23:59:60
-// 2012-06-30 23:59:60
-// 2015-06-30 23:59:60
-// 2016-12-31 23:59:60
-
-fn main() -> Result<()> {
-    // issue 4 is missing so skip a few
-    for issue in 1..=85 {
-        let param = bulletin_a(issue * 10)?;
-        let leap = param.leap(0.60);
-        eprintln!("{} -> {}", param.date, leap);
-    }
-    Ok(())
 }
