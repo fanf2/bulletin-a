@@ -97,11 +97,11 @@ impl BulletinA {
     }
     fn leap(self, thresh: f64) -> Leap {
         for year in 2000..3000 {
-            match self.leap_at(thresh, gregorian(year, 6, 30)) {
+            match self.leap_at(thresh, Gregorian(year, 6, 30)) {
                 Leap::Zero => (),
                 leap => return leap,
             };
-            match self.leap_at(thresh, gregorian(year, 12, 31)) {
+            match self.leap_at(thresh, Gregorian(year, 12, 31)) {
                 Leap::Zero => (),
                 leap => return leap,
             };
@@ -170,8 +170,8 @@ fn latest_bulletin_a() -> Result<i32> {
     use std::time::SystemTime;
     let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     let unix_date = now.as_secs() / (24 * 60 * 60);
-    let mjd = i32::from(gregorian(1970, 1, 1)) + unix_date as i32;
-    let zero = i32::from(gregorian(2005, 1, 13));
+    let mjd = i32::from(Gregorian(1970, 1, 1)) + unix_date as i32;
+    let zero = i32::from(Gregorian(2005, 1, 13));
     Ok((mjd - zero) / 7)
 }
 
@@ -179,13 +179,13 @@ fn get_bulletin_a(issue: i32) -> Result<(Gregorian, String)> {
     // no bulletin issued on 2009-01-01 which would have been 208
     // first available issue
     let zero =
-        i32::from(gregorian(2005, 1, 6)) + if issue >= 208 { 7 } else { 0 };
+        i32::from(Gregorian(2005, 1, 6)) + if issue >= 208 { 7 } else { 0 };
     // published weekly
     let date = Gregorian::from(zero + issue * 7);
-    let year = date.y;
+    let year = date.year();
     let volume = Roman(year - 1987);
     // volume number is week within year
-    let janus = i32::from(gregorian(year, 1, 1));
+    let janus = i32::from(Gregorian(year, 1, 1));
     let week = (i32::from(date) - janus) / 7 + if year == 2009 { 0 } else { 1 };
     let weeks = format!("{:03}", week);
     let prefix = "https://datacenter.iers.org/data/6/bulletina";
