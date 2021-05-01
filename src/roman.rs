@@ -1,7 +1,7 @@
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Roman(pub i32);
 
-impl std::fmt::Debug for Roman {
+impl std::fmt::Display for Roman {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // we'll just panic if the number is negative or too large
         let n = self.0 as usize;
@@ -24,6 +24,6 @@ impl std::fmt::Debug for Roman {
 mod tests {
     #[test]
     fn test() {
-        assert_eq!("mmcdlxviii", format!("{:?}", super::Roman(2468)));
+        assert_eq!("mmcdlxviii", format!("{}", super::Roman(2468)));
     }
 }

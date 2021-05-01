@@ -1,4 +1,4 @@
-#[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Gregorian(pub i32, pub i32, pub i32);
 
 impl Gregorian {
@@ -16,12 +16,6 @@ impl Gregorian {
 impl std::fmt::Display for Gregorian {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:04}-{:02}-{:02}", self.year(), self.month(), self.day(),)
-    }
-}
-
-impl std::fmt::Debug for Gregorian {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Gregorian({})", self)
     }
 }
 

@@ -195,7 +195,7 @@ fn get_bulletin_a(issue: i32) -> Result<(Gregorian, String)> {
     let week = (i32::from(date) - janus) / 7 + if year == 2009 { 0 } else { 1 };
     let weeks = format!("{:03}", week);
     let prefix = "https://datacenter.iers.org/data/6/bulletina";
-    let url = URL(format!("{}-{:?}-{}.txt", prefix, volume, weeks));
+    let url = URL(format!("{}-{}-{}.txt", prefix, volume, weeks));
     // local cache
     let dir = format!("bula/{}", year);
     let file = format!("{}/{}", dir, weeks);
