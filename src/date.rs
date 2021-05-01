@@ -64,6 +64,7 @@ mod tests {
             (Gregorian(1, 1, 1), -678575),
             (Gregorian(1858, 11, 16), -1),
             (Gregorian(1858, 11, 17), 0),
+            (Gregorian(1900, 1, 1), 15020),
             (Gregorian(1970, 1, 1), 40587),
             (Gregorian(2001, 1, 1), 5 * 146097 - 678575),
             (Gregorian(2020, 2, 2), 58881),
