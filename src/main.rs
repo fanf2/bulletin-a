@@ -217,7 +217,7 @@ fn get_bulletin_a(issue: i32) -> Result<(Gregorian, String)> {
 type ParseResult<'a> =
     nom::IResult<&'a str, BulletinA, nom::error::VerboseError<&'a str>>;
 
-fn parse_bulletin_a<'a>(date: Gregorian, bula: &'a str) -> ParseResult<'a> {
+fn parse_bulletin_a(date: Gregorian, bula: &str) -> ParseResult {
     use nom::branch::*;
     use nom::bytes::complete::*;
     use nom::character::complete::*;
