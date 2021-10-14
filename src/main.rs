@@ -177,7 +177,7 @@ fn latest_bulletin_a() -> Result<i32> {
     let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     let unix_date = now.as_secs() / (24 * 60 * 60);
     let mjd = i32::from(Gregorian(1970, 1, 1)) + unix_date as i32;
-    let zero = i32::from(Gregorian(2005, 1, 13));
+    let zero = i32::from(Gregorian(2005, 1, 14));
     Ok((mjd - zero) / 7)
 }
 
