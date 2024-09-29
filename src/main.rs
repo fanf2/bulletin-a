@@ -30,7 +30,7 @@ fn main() -> Result<()> {
     for issue in first..=latest {
         let param = bulletin_a(issue)?;
         let leap = param.leap(thresh);
-        eprintln!("{} -> {}", param.date, leap);
+        println!("{} -> {}", param.date, leap);
     }
     Ok(())
 }
