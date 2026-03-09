@@ -7,12 +7,15 @@ use roman::Roman;
 use std::io::Read;
 use std::str::FromStr;
 
+const THRESH: f64 = 0.60;
+
 fn usage() {
     eprint!(
-            "usage: bulletin-a [N]\n\
-             display leap second forecast from the last N issues of Bulletin A\n\
-             default is to print the latest forecast\n"
-        );
+        "usage: bulletin-a [N] [threshold]\n\
+         display leap second forecast from the last N issues of Bulletin A\n\
+         and predict next leap second based on the given UT1-UTC threshold\n\
+         default is to print the latest forecast with a threshold of {THRESH}\n"
+    );
     std::process::exit(1);
 }
 
@@ -23,7 +26,7 @@ fn main() -> Result<()> {
     {
         usage();
     }
-    let thresh = if args.len() > 2 { f64::from_str(&args[2])? } else { 0.60 };
+    let thresh = if args.len() > 2 { f64::from_str(&args[2])? } else { THRESH };
     let count = if args.len() > 1 { i32::from_str(&args[1])? } else { 1 };
     let latest = latest_bulletin_a()?;
     let first = latest - count + 1;
