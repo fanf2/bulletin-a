@@ -30,10 +30,15 @@ fn main() -> Result<()> {
     let count = if args.len() > 1 { i32::from_str(&args[1])? } else { 1 };
     let latest = latest_bulletin_a()?;
     let first = latest - count + 1;
+    let mut lod = 0.0;
     for issue in first..=latest {
         let param = bulletin_a(issue)?;
         let leap = param.leap(thresh);
         println!("{} -> {}", param.date, leap);
+        lod += param.pred.lod;
+    }
+    if count > 1 {
+        println!("mean lod {:+.0} µs", lod * 1_000_000.0 / (count as f64));
     }
     Ok(())
 }
