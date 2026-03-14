@@ -36,16 +36,16 @@ for my $i (@{ $eop->{EOP}->{data}->{timeSeries} }) {
 	push @lodmm, $lod; shift @lodmm if @lodmm > 30 * 3;
 	push @lody,  $lod; shift @lody  if @lody  > 365;
 	push @lodyy, $lod; shift @lodyy if @lodyy > 365 * 4;
-	printf "%s %+4.0f %+5.0f %+5.0f\n",
+	printf "%s %+4.0f %+5.0f %+5.0f %+5.0f %+5.0f %+5.0f\n",
 	    $date, $dut,
-	    # $lod,
-	    # sum(@lodm) / @lodm,
-	    # sum(@lodmm) / @lodmm,
+	    $lod,
+	    sum(@lodm) / @lodm,
+	    sum(@lodmm) / @lodmm,
 	    sum(@lody) / @lody,
 	    sum(@lodyy) / @lodyy
 	    if $t->{dateDay} eq '01';
 }
 
-say "#   date   dutc   lod   lod";
-say "#            ms    µs    µs";
-say "#                  1y    4y";
+say "#   date   dutc   lod   lod   lod   lod   lod";
+say "#            ms    µs    µs    µs    µs    µs";
+say "#                 day   1mo   4mo    1y    4y";

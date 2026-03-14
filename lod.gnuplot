@@ -14,7 +14,7 @@ set ytics 100
 # ./lod.pl <finals2000A.all.json >lod
 
 plot 'lod' using 1:2 with lines title "UT1-UTC" \
-   , ''    using 1:3 with lines title "LoD" \
+   , ''    using 1:6 with lines title "LoD" \
    , 0               with lines notitle
 
 pause mouse close
