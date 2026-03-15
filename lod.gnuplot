@@ -12,7 +12,7 @@ set linetype 1 linewidth 2
 set linetype 2 linewidth 2
 set linetype 5 linecolor "black"
 
-plot '< ./dxdy.pl <finals2000A.data.json' \
+plot '< ./lod.pl <finals2000A.data.json' \
     using 1:2 with lines title "UT1-UTC" ,''\
     using 1:5 with lines title "LoD"     ,''\
     using 1:6 with lines title "dX"      ,''\
